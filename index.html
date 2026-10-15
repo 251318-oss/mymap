@@ -7,7 +7,7 @@
   <title>우리 동네 의료 지도</title>
 
   <!-- 카카오맵 SDK: JavaScript 키 입력 필요 -->
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey8e7647e3a2f83e004b228a7254647882&libraries=services"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=8e7647e3a2f83e004b228a7254647882&autoload=false&libraries=services"></script>
 
   <style>
     * {
@@ -650,8 +650,13 @@
     function moveToCurrentLocation(shouldSearch) {
       if (!navigator.geolocation) {
         statusElement.textContent =
-          "이 브라우저에서는 현재 위치 기능을 지원하지 않습니다.";
+          "현재 위치 기능을 사용할 수 없습니다. Chrome에서 http://localhost 주소로 실행해 주세요.";
         return;
+      }
+
+      if (!window.isSecureContext) {
+        statusElement.textContent =
+          "현재 위치 기능은 보안 연결이 필요할 수 있습니다. 파일을 직접 열기보다 VS Code Live Server(http://localhost)로 실행해 주세요.";
       }
 
       statusElement.textContent =
@@ -674,9 +679,18 @@
             searchPlaces();
           }
         },
-        function () {
-          statusElement.textContent =
-            "위치를 가져오지 못했습니다. 위치 권한을 확인하거나 지역을 검색해 주세요.";
+        function (error) {
+          console.warn("현재 위치를 가져오지 못했습니다:", error);
+          if (error.code === error.PERMISSION_DENIED) {
+            statusElement.textContent =
+              "위치 권한이 차단되어 있습니다. 주소창 왼쪽의 사이트 설정에서 위치 권한을 허용해 주세요.";
+          } else if (error.code === error.TIMEOUT) {
+            statusElement.textContent =
+              "현재 위치 확인 시간이 초과되었습니다. 다시 시도하거나 지역을 검색해 주세요.";
+          } else {
+            statusElement.textContent =
+              "현재 위치를 가져오지 못했습니다. 위치 권한과 브라우저 설정을 확인해 주세요.";
+          }
         },
         {
           enableHighAccuracy: true,
@@ -685,13 +699,22 @@
       );
     }
 
-    // 카카오 지도 SDK 로드가 끝난 후 실행
+    // 카카오 지도 SDK가 준비된 뒤 지도 초기화
     window.addEventListener("load", function () {
-      if (typeof kakao !== "undefined" && kakao.maps) {
-        kakao.maps.load(initMap);
-      } else {
+      if (typeof kakao === "undefined" || !kakao.maps) {
         statusElement.textContent =
-          "지도를 불러오지 못했습니다. 카카오 JavaScript 키를 확인해 주세요.";
+          "지도를 불러오지 못했습니다. 인터넷 연결, JavaScript 키, 등록된 사이트 도메인을 확인해 주세요.";
+        return;
+      }
+
+      try {
+        kakao.maps.load(function () {
+          initMap();
+        });
+      } catch (error) {
+        console.error("카카오 지도 초기화 오류:", error);
+        statusElement.textContent =
+          "지도 초기화 중 오류가 발생했습니다. 브라우저 개발자 도구의 Console을 확인해 주세요.";
       }
     });
   </script>
